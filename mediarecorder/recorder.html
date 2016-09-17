@@ -73,14 +73,84 @@
   // ==== (2) 録画 ====
   // -- 録画開始 --
   function startRecording() {
+    // チェック
+    if (! localStream) {
+      console.warn('stream not ready');
+      return;      
+    }
+    if (recorder) {
+      console.warn('already recording');
+      return;
+    }
+
+    recorder = new MediaRecorder(localStream);
+    /* -- option を使う場合のサンプル --
+    var options = {
+      audioBitsPerSecond : 64000,
+      videoBitsPerSecond : 512000,
+      mimeType : 'video/webm; codecs=vp9'
+    };
+    recorder = new MediaRecorder(localStream, options);    
+    -- option を使う場合のサンプル ---*/
+    
+    chunks = []; // 格納場所をクリア
+    
+    // 録画進行中に、インターバルに合わせて発生するイベント
+    recorder.ondataavailable = function(evt) {
+      console.log("data available: evt.data.type=" + evt.data.type + " size=" + evt.data.size);
+      chunks.push(evt.data);
+    };
+    
+    // 録画停止時のイベント
+    recorder.onstop = function(evt) {
+      console.log('recorder.onstop(), so playback');
+      recorder = null;
+      playRecorded();
+    };
+
+    // 録画スタート
+    recorder.start(1000); // インターバルは1000ms
+    console.log('start recording');
   }
 
   // -- 録画停止 -- 
   function stopRecording() {
+    if (recorder) {
+      recorder.stop();
+      console.log("stop recording");
+    }
   }
 
   // -- 再生 --
   function playRecorded() {
+    if (! blobUrl) {
+      window.URL.revokeObjectURL(blobUrl);
+      blobUrl = null;
+    }
+
+    // Blob
+    var videoBlob = new Blob(chunks, { type: "video/webm" });
+    
+    // 再生できるようにURLを生成
+    blobUrl = window.URL.createObjectURL(videoBlob);
+    
+    // ==== (3) ダウンロード ====
+
+    // ==== (3) ダウンロード ====
+
+    // 録画した内容を再生
+    if (blobUrl) {
+      playbackVideo.src = blobUrl;
+      
+      // 再生終了時の処理
+      playbackVideo.onended = function() {
+        playbackVideo.pause();
+        playbackVideo.src = "";
+      };
+
+      // 再生開始
+      playbackVideo.play();
+    }
   }
   // ==== (2) 録画 ====
 
