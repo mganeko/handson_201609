@@ -26,3 +26,15 @@ MediaRecorderを使って録画してみよう
 
 - 録画ファイルのダウンロード
 
+### Step Extra
+
+- オマケ：複数再生を使って、一人Waveや一人Train(Ghost)ごっこ
+ - record_wave.html
+
+- 参考：各ステップのソース
+ - record_0.html
+ - record_1.html
+ - record_2.html
+ - record_3.html
+
+
