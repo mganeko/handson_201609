@@ -135,7 +135,9 @@
     blobUrl = window.URL.createObjectURL(videoBlob);
     
     // ==== (3) ダウンロード ====
-
+    // ダウンロードの準備
+    anchor.download = 'recorded.webm';
+    anchor.href = blobUrl;
     // ==== (3) ダウンロード ====
 
     // 録画した内容を再生
