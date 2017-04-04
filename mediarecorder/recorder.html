@@ -3,8 +3,45 @@
 <head>
  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
  <title>MeidaRecorder</title>
+
+ <!-- (4) Canvas利用のお絵かきツールの録画 -->
+ <!-- https://github.com/woohoeon/responsive-canvas-painter から -->
+ <link rel="stylesheet" href="css/painter.css" type="text/css">
+ <style>
+  a {
+    color: #0088cc;
+    text-decoration: none;
+  }
+  .logo {
+    font-size: 60px;
+    text-align: center;
+    line-height: 60px;
+  }
+  .description {
+    text-align: center;
+  }
+  .subtitle {
+    padding-top: 10px;
+  }
+ </style>
+ <!-- (4) Canvas利用のお絵かきツールの録画 -->
+
 </head>
 <body>
+  <!-- Recording with Firefox 48 / Camera 53<br /> -->
+  <!-- (4) Canvas利用のお絵かきツールの録画 -->
+  <!-- https://github.com/woohoeon/responsive-canvas-painter から -->
+  <h1 class="logo">Responsive canvas painter</h1>
+  <div class="description">
+    <a href="https://github.com/woohoeon/responsive-canvas-painter"><span>View on GitHub</span></a>
+    <h2 class="subtitle">Demo</h2>
+  </div>
+  <div id="section">
+    <canvas class="canvas-layer" id="canvasLayer"></canvas>
+    <canvas class="canvas-layer" id="canvasInterfaceLayer"></canvas>
+  </div>
+  <!-- (4) Canvas利用のお絵かきツールの録画 -->
+
   Recording with Firefox 48 / Camera 53<br />
   <button onclick="startVideo()">Start Camera</button>
   <button onclick="stopVideo()">Stop Camera</button>
@@ -17,6 +54,26 @@
   <video id="playback_video" autoplay style="width: 240px; height: 180px; border: 1px solid black;"></video>
   <br />
 </body>
+
+<!-- (4) Canvas利用のお絵かきツールの録画 -->
+<!-- https://github.com/woohoeon/responsive-canvas-painter から -->
+<script type="text/javascript" src="js/painter.js"></script>
+<script>
+  (() => {
+    
+    const painter = canvasPainter('canvasLayer', 'canvasInterfaceLayer', '700', '500');
+    
+    painter.init({
+      type : 'pen', 
+      weight : 3, 
+      cap : 'round',
+      color : '#ff5fa6'
+    });
+    
+  })();
+</script>
+<!-- (4) Canvas利用のお絵かきツールの録画 -->
+
 <script type="text/javascript">
   // ==== (1) カメラ映像の取得の準備 ====
   var localVideo = document.getElementById('local_video');
@@ -38,20 +95,13 @@
   // ==== (1) カメラ映像の取得 ==== 
   // -- カメラ映像を取得 --
   function startVideo() {
-    // Chrome 53から使える、新しい書き方。 promise を返す
-    navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: false
-    })
-    .then(function (stream) { // success
-      localStream = stream;
-      
-      // videoタグで表示
-      localVideo.srcObject = localStream; // Chrome 53から使える (window.URL.createObjectURLを使わなくても良い)
-    }).catch(function (error) { // error
-      console.error('mediaDevice.getUserMedia() error:', error);
-      return;
-    });
+    // ====  (4) Canvas利用のお絵かきツールの録画 ====
+    var canvasToCapture = document.getElementById('canvasLayer');
+    if (canvasToCapture) {
+      localStream = canvasToCapture.captureStream(30); // 30 fps
+      localVideo.srcObject = localStream;
+    }
+    // ====  (4) Canvas利用のお絵かきツールの録画 ====
   }
   
   // -- カメラ映像を停止 --

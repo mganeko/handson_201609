@@ -26,3 +26,9 @@ MediaRecorderを使って録画してみよう
 
 - 録画ファイルのダウンロード
 
+### Step 4 - Canvas Paint
+
+- Canvasを使ったお絵かきツールから録画
+- [responsive-canvas-painter](https://github.com/woohoeon/responsive-canvas-painter)ソースを利用
+    - cssフォルダ以下、jsフォルダ以下をコピーして利用
+    - index.htmlファイルから処理を拝借
