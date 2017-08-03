@@ -27,6 +27,7 @@
   <button onclick="addGhostPlayer()">Add Ghost</button>
     <!-- for algo (time trim) -->
     <button onclick="addOverlapPlayer()">Add Overlapt</button>
+    <button onclick="removePlaybackVideos()">Remove all</button>
     <!-- for algo (time trim) -->
   <div id="container"></div>
   <!-- for wave and ghost -->
@@ -307,6 +308,16 @@
     console.log('newVideo.src=' + newVideo.src);
     container.appendChild(newVideo);
     newVideo.play();
+  }
+
+  function removePlaybackVideos() {
+    while (container.firstChild) {
+      container.firstChild.pause();
+      container.firstChild.src = '';
+      container.removeChild(container.firstChild);
+    }
+
+    overlapLeft = 10;
   }
   // ==== Time trim, overlap for アルゴリズム体操 ====
 
