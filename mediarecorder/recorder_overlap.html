@@ -1,0 +1,326 @@
+<!doctype html>
+<html>
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+ <title>MeidaRecorder</title>
+</head>
+<body>
+  Recording with Firefox 48 / Camera 53<br />
+  <button onclick="startVideo()">Start Camera</button>
+  <button onclick="stopVideo()">Stop Camera</button>
+  &nbsp;&nbsp;
+  <button onclick="startRecording()">Start Recording</button>
+  <button onclick="stopRecording()">Stop Recording</button>
+  <a href="#" id="downloadlink">Download</a>
+  <br />
+  <video id="local_video" autoplay style="width: 240px; height: 180px; border: 1px solid black;"></video>
+  <video id="playback_video" controls="1" autoplay style="width: 240px; height: 180px; border: 1px solid black;"></video>
+  <!-- for for time trim and overlap -->
+  <button onclick="setStartPoint()">Set Start Point</button>
+  <span id="start_point"></span>
+  <button onclick="setStopPoint()">Set Stop Point</button>
+  <span id="stop_point"></span>
+  <!-- for time trim and overlap -->  
+  <br />
+  <!-- for wave and ghost -->
+  <button onclick="addWavePlayer()">Add Wave</button>
+  <button onclick="addGhostPlayer()">Add Ghost</button>
+    <!-- for algo (time trim) -->
+    <button onclick="addOverlapPlayer()">Add Overlapt</button>
+    <button onclick="removePlaybackVideos()">Remove all</button>
+    <!-- for algo (time trim) -->
+  <div id="container"></div>
+  <!-- for wave and ghost -->
+</body>
+<script type="text/javascript">
+  // ==== (1) カメラ映像の取得の準備 ====
+  var localVideo = document.getElementById('local_video');
+  var localStream = null;
+  // ==== (1) カメラ映像の取得の準備 ====
+
+  // ==== (2) 録画の準備 ====
+  // --- recording ---
+  var recorder =  null;
+  var blobUrl = null;
+  var chunks = [];
+  var playbackVideo =  document.getElementById('playback_video');
+  // ==== (2) 録画の準備 ====
+
+  // ==== (3) ダウンロードの準備 ====
+  var anchor = document.getElementById('downloadlink');
+  // ==== (3) ダウンロードの準備 ====
+
+  // ==== (1) カメラ映像の取得 ==== 
+  // -- カメラ映像を取得 --
+  function startVideo() {
+    // Chrome 53から使える、新しい書き方。 promise を返す
+    navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false
+    })
+    .then(function (stream) { // success
+      localStream = stream;
+      
+      // videoタグで表示
+      localVideo.srcObject = localStream; // Chrome 53から使える (window.URL.createObjectURLを使わなくても良い)
+    }).catch(function (error) { // error
+      console.error('mediaDevice.getUserMedia() error:', error);
+      return;
+    });
+  }
+  
+  // -- カメラ映像を停止 --
+  function stopVideo() {
+    if (localStream) {
+      // track 毎に停止
+      for (track of localStream.getTracks()) {
+        track.stop();
+      }
+      localStream = null;
+    }
+    
+    // videoタグを停止
+    localVideo.pause();
+    localVideo.srcObject = null; // Chrome 53から使える (window.URL.revokeObjectURLを使わなくても良い)
+  }
+  // ==== (1) カメラ映像の取得 ====
+
+  // ==== (2) 録画 ====
+  // -- 録画開始 --
+  function startRecording() {
+    // チェック
+    if (! localStream) {
+      console.warn('stream not ready');
+      return;      
+    }
+    if (recorder) {
+      console.warn('already recording');
+      return;
+    }
+
+    recorder = new MediaRecorder(localStream);
+    /* -- option を使う場合のサンプル --
+    var options = {
+      audioBitsPerSecond : 64000,
+      videoBitsPerSecond : 512000,
+      mimeType : 'video/webm; codecs=vp9'
+    };
+    recorder = new MediaRecorder(localStream, options);    
+    -- option を使う場合のサンプル ---*/
+    
+    chunks = []; // 格納場所をクリア
+    
+    // 録画進行中に、インターバルに合わせて発生するイベント
+    recorder.ondataavailable = function(evt) {
+      console.log("data available: evt.data.type=" + evt.data.type + " size=" + evt.data.size);
+      chunks.push(evt.data);
+    };
+    
+    // 録画停止時のイベント
+    recorder.onstop = function(evt) {
+      console.log('recorder.onstop(), so playback');
+      recorder = null;
+      playRecorded();
+    };
+
+    // 録画スタート
+    recorder.start(1000); // インターバルは1000ms
+    console.log('start recording');
+  }
+
+  // -- 録画停止 -- 
+  function stopRecording() {
+    if (recorder) {
+      recorder.stop();
+      console.log("stop recording");
+    }
+  }
+
+  // -- 再生 --
+  function playRecorded() {
+    if (! blobUrl) {
+      window.URL.revokeObjectURL(blobUrl);
+      blobUrl = null;
+    }
+
+    // Blob
+    var videoBlob = new Blob(chunks, { type: "video/webm" });
+    
+    // 再生できるようにURLを生成
+    blobUrl = window.URL.createObjectURL(videoBlob);
+    
+    // ==== (3) ダウンロード ====
+    // ダウンロードの準備
+    anchor.download = 'recorded.webm';
+    anchor.href = blobUrl;
+    // ==== (3) ダウンロード ====
+
+    // 録画した内容を再生
+    if (blobUrl) {
+      playbackVideo.src = blobUrl;
+      
+      // 再生終了時の処理
+      playbackVideo.onended = function() {
+        playbackVideo.pause();
+        // -- for time trim --
+        //playbackVideo.src = "";
+        // -- for time trim --
+      };
+
+      // 再生開始
+      playbackVideo.play();
+    }
+  }
+  // ==== (2) 録画 ====
+
+  // ==== 一人Wave, 一人Train(Ghost) ====
+  var container =  document.getElementById('container');
+
+  function addWavePlayer() {
+    if (! blobUrl) {
+      console.warn('not recorded yet');
+      return;
+    }
+
+    var newVideo = document.createElement('video');
+    newVideo.style.width = '160px';
+    newVideo.style.height = '120px';
+    newVideo.style.border = '1px solid';
+    //newVideo.controls = "1";
+    newVideo.volume = 0;
+    newVideo.src = blobUrl;
+    newVideo.loop = "1";
+    newVideo.onended = function () {
+      newVideo.play(); // リピート再生
+    };
+
+    container.appendChild(newVideo);
+    newVideo.play();
+  }
+
+  function addGhostPlayer() {
+    if (! blobUrl) {
+      console.warn('not recorded yet');
+      return;
+    }
+
+    var newVideo = document.createElement('video');
+    newVideo.style.width = '320px';
+    newVideo.style.height = '240px';
+    newVideo.style.border = '1px solid';
+    //newVideo.controls = "1";
+    newVideo.volume = 0;
+    newVideo.src = blobUrl;
+    newVideo.style.position = "absolute";
+    newVideo.style.left = "10px";
+    newVideo.style.top = "300px";
+    newVideo.style.opacity = 0.2;
+
+    newVideo.onended = function () {
+      container.removeChild(newVideo); // 取り除く
+    };
+    
+    container.appendChild(newVideo);
+    newVideo.play();
+  }
+  // ==== 1人Wave, 1人Train(Ghost) ====
+
+  // ==== Time trim, overlap for アルゴリズム体操 ====
+  let startPoint = 0;
+  let stopPoint = 0;
+  let overlapLeft = 10;
+  let overlapPitch = 200 / 2;
+
+  function setStartPoint() {
+    let current = playbackVideo.currentTime;
+    console.log('setStartPoint() current=' + current);
+    if (current) {
+      startPoint = current;
+      document.getElementById('start_point').innerText = current;
+    }
+  }
+
+  function setStopPoint() {
+    let current = playbackVideo.currentTime;
+    console.log('setStopPoint() current=' + current);
+    if (current) {
+      stopPoint = current;
+      document.getElementById('stop_point').innerText = current;
+    }
+  }
+
+  function addOverlapPlayer() {
+    if (! blobUrl) {
+      console.warn('not recorded yet');
+      return;
+    }
+
+    var newVideo = document.createElement('video');
+    newVideo.style.width = '200px';
+    newVideo.style.height = '150px';
+    newVideo.style.border = 'none'; //1px solid';
+    newVideo.style.position = "absolute";
+    newVideo.style.left = (overlapLeft + 'px');
+    newVideo.style.top = '300px';
+    newVideo.style.opacity = 0.6;
+    overlapLeft += overlapPitch;
+
+    //newVideo.controls = "1";
+    newVideo.volume = 0;
+    newVideo.src = blobUrl;
+    newVideo.loop = "1";
+    newVideo.onended = function () {
+      newVideo.play(); // リピート再生
+    };
+  
+    if (startPoint) {
+      newVideo.currentTime = startPoint;
+    }
+    if (stopPoint) { 
+      newVideo.ontimeupdate = function() {
+        if (newVideo.currentTime >= stopPoint) {
+          if (startPoint) {
+            newVideo.currentTime = startPoint;
+          }
+          else {
+            newVideo.currentTime = 0;
+          }
+        }
+      };
+    }
+
+    /*--
+    if (startPoint) {
+      newVideo.src += ('#t=' + startPoint);
+      if (stopPoint) {
+        newVideo.src += (',' + stopPoint);
+
+        newVideo.ontimeupdate = function() {
+          if (newVideo.currentTime >= stopPoint) {
+            newVideo.currentTime = startPoint;
+            newVideo.play(); // リピート再生
+          }
+        };
+      }
+    }
+    --*/
+
+    console.log('newVideo.src=' + newVideo.src);
+    container.appendChild(newVideo);
+    newVideo.play();
+  }
+
+  function removePlaybackVideos() {
+    while (container.firstChild) {
+      container.firstChild.pause();
+      container.firstChild.src = '';
+      container.removeChild(container.firstChild);
+    }
+
+    overlapLeft = 10;
+  }
+  // ==== Time trim, overlap for アルゴリズム体操 ====
+
+</script>
+</html>
+
